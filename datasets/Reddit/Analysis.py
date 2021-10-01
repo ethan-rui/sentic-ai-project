@@ -37,7 +37,7 @@ class Analysis:
             for ticker in sorted_ticker_dict:
                 if counter == top:
                     break
-                d = pd.DataFrame([{"Date":group[1]["Date"][0],"Average Sentiment": group[1]["score"].sum() / group[1]["score"].count()}\
+                d = pd.DataFrame([{"Date":group[1]["Date"][0],"Average Sentiment": group[1]["sentiment_score"].sum() / group[1]["score"].count()}\
                     for group in ticker_dict[ticker].groupby(ticker_dict[ticker].index.date)])
                 d = d[d["Date"] > d["Date"].max() - timedelta(days=limit)]
                 if d["Date"].count() > 1:
@@ -52,7 +52,7 @@ class Analysis:
             ax.axhline(y=0.70, color="g",linestyle="-")
             ax.legend(loc='best')
         else:    
-            d = pd.DataFrame([{"Date":group[1]["Date"][0],"Average Sentiment": group[1]["score"].sum() / group[1]["score"].count()}\
+            d = pd.DataFrame([{"Date":group[1]["Date"][0],"Average Sentiment": group[1]["sentiment_score"].sum() / group[1]["score"].count()}\
                 for group in ticker_dict[ticker].groupby(ticker_dict[ticker].index.date)])
             d.set_index("Date")
             print(d)
@@ -67,7 +67,7 @@ if __name__ == "__main__":
     df_tickerlabel_list = cleaner.label_tickers(df_list=None, tickers=None, targeted_col_name="Title", load_last=True)    
 
     ticker_dict = a.pack_to_tickers(cleaner.sentiment_analysis(df_tickerlabel_list, load_last=True))
-    a.average_daily_sentiment(ticker_dict=ticker_dict, ticker="SPY",top=10, limit=14)
+    a.average_daily_sentiment(ticker_dict=ticker_dict, ticker="SPY",top=5, limit=31)
 
                 
     
