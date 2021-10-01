@@ -24,6 +24,28 @@ class Analysis:
             ticker_dict[ticker].index = ticker_dict[ticker]["Date"]
         return ticker_dict
     
+    def pack_comments_to_posts(self, df_posts:pd.DataFrame, df_comments:pd.DataFrame, name:str="posts", save:bool=False, load_last:bool=False):
+        packed_df = df_posts.copy()
+        evaluation = []
+        if load_last:
+            try:
+                pd.read_csv(os.path.join())
+        for post in df_posts.iloc():
+            related_comments = df_comments[df_comments["post_id"] == post["ID"]]
+            related_comments = related_comments["score"]
+            evaluation.append(self.evaluation_matrix(post["score"], comments["score"]))
+        packed_df["sentiment_score"] = evaluation
+        return packed_df
+    @staticmethod
+    def evaluation_matrix(post_score:float, comments_score:list, w1:int = 2, w2:int = 1):
+        counter = w1
+        total = post_score * w1
+        for comment in comments_score:
+            total += comment * w2
+            counter += w2
+        total /= counter
+        return total
+
     def average_daily_sentiment(self, ticker_dict: dict, ticker: str="SPY", top: int=0,limit: int=31):
         # Sorting rows in dataframes by day
         """
@@ -61,13 +83,20 @@ class Analysis:
             plt.axhline(y=0.70, color="g",linestyle="-")
         plt.show()
         
-if __name__ == "__main__":
+def main():
     cleaner = Cleaner()
     a = Analysis()
     df_tickerlabel_list = cleaner.label_tickers(df_list=None, tickers=None, targeted_col_name="Title", load_last=True)    
 
-    ticker_dict = a.pack_to_tickers(cleaner.sentiment_analysis(df_tickerlabel_list, load_last=True))
+    #ticker_dict = a.pack_to_tickers(cleaner.sentiment_analysis(df_tickerlabel_list, load_last=True))
+    posts_sentiment_list = cleaner.sentiment_analysis(df_tickerlabel_list, "Concepts", "posts", load_last=True)
+    comments_sentiment_list = cleaner.sentiment_analysis(comments_list, "Concepts", "comments", load_last=True)
+    ticker_dict = a.pack_to_tickers(a.pack_comments_to_posts())
     a.average_daily_sentiment(ticker_dict=ticker_dict, ticker="SPY",top=5, limit=31)
+
+
+if __name__ == "__main__":
+    main()
 
                 
     

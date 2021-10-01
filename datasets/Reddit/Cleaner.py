@@ -12,6 +12,7 @@ import os
 import re
 
 
+
 class Cleaner:
     def __init__(self):
         config = loads(open(os.path.join(os.path.abspath(''), '../config/config.json')).read())
@@ -87,7 +88,7 @@ class Cleaner:
         if load_last:
             try:
                 df = pd.read_csv(os.path.join(cache_dir, f"labelled_tickers_{dfname}.csv"))
-                return new_df_list
+                return df
             except:
                 print("\n".join(["Error has occurred","Proceeding with labeling..."]))
         patterns = {ticker:re.compile(f"\W{ticker}\W") for ticker in tickers["ticker"].iloc()}
@@ -128,7 +129,9 @@ class Cleaner:
 
         if self.sentiment == None:
             self.sentiment = pipeline("sentiment-analysis")
-        df["sentiment_score"] = df[targeted_col_name].apply(self.sentiment_analysis_handler)
+        tqdm.pandas() # For TQDM in pandas
+        print("Running")
+        df["score"] = df[targeted_col_name].apply(self.sentiment_analysis_handler)
     
         if save:
             try:
@@ -166,9 +169,10 @@ def main():
     df_tickerlabel_list = cleaner.label_tickers(df=posts_list, tickers=ticker_list, targeted_col_name="Title",new_col_name="Stock",dfname="posts", load_last=True)
     
     comments_list = comments_list[comments_list["post_id"].isin(posts_list["ID"])] # Filter out comments from posts that are not included (not labelled)
-    #print(comments_list["author"])
-    #posts_sentiment_list = cleaner.sentiment_analysis(df_tickerlabel_list, "Concepts", "posts", save=True)
-    #comments_sentiment_list = cleaner.sentiment_analysis(comments_list, "Concepts", "comments", save=True)
+    
+    print(comments_list)
+    posts_sentiment_list = cleaner.sentiment_analysis(df_tickerlabel_list, "Concepts", "posts", save=True)
+    comments_sentiment_list = cleaner.sentiment_analysis(comments_list, "Concepts", "comments", save=True)
     # print(df_tickerlabel_list)
 
 
