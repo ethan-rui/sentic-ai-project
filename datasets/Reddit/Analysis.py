@@ -2,6 +2,8 @@ from Cleaner import Cleaner
 from matplotlib import pyplot as plt
 from datetime import time, timedelta
 from ast import literal_eval
+from tqdm import tqdm
+import os
 import pandas as pd
 
 
@@ -9,10 +11,9 @@ import pandas as pd
 class Analysis:
     def __init__(self):
         pass
-    def pack_to_tickers(self, df_list:list, stock_col:str="Stock"):
+    def pack_to_tickers(self, df:pd.DataFrame, stock_col:str="Stock"):
         ticker_dict = {}
-        merged_df = pd.concat(df_list)
-        for row in merged_df.iloc():
+        for row in df.iloc():
             for ticker in literal_eval(row[stock_col]):
                 try:
                     ticker_dict[ticker].append(row)
@@ -24,6 +25,41 @@ class Analysis:
             ticker_dict[ticker].index = ticker_dict[ticker]["Date"]
         return ticker_dict
     
+    def pack_comments_to_posts(self, df_posts:pd.DataFrame, df_comments:pd.DataFrame, name:str="posts", save:bool=False, load_last:bool=False):
+        packed_df = df_posts.copy()
+        evaluation = []
+        comments_score = []
+        cache_dir = os.path.join(os.path.abspath(""), "evaluate_history")
+        if load_last:
+            try:
+                df = pd.read_csv(os.path.join(cache_dir, f"evaluated_{name}.csv"))
+                return df
+            except:
+                print("Error loading previous saved, proceeding with packing and evaluation")
+        for post in tqdm(df_posts.iloc(), total=df_posts.shape[0]):
+            related_comments = df_comments[df_comments["post_id"] == post["ID"]]
+            related_comments = related_comments["score"]
+            evaluation.append(self.evaluation_matrix(post["score"], related_comments))
+            comments_score.append(df_comments["score"])
+        packed_df["sentiment_score"] = evaluation
+        packed_df["comments_score"] = comments_score
+        if save:
+            try:
+                os.mkdir(cache_dir)
+            except:
+                pass
+            packed_df.to_csv(os.path.join(cache_dir, f"evaluated_{name}.csv"))
+        return packed_df
+    @staticmethod
+    def evaluation_matrix(post_score:float, comments_score:list, w1:int = 2, w2:int = 1):
+        counter = w1
+        total = post_score * w1
+        for comment in comments_score:
+            total += comment * w2
+            counter += w2
+        total /= counter
+        return total
+
     def average_daily_sentiment(self, ticker_dict: dict, ticker: str="SPY", top: int=0,limit: int=31):
         # Sorting rows in dataframes by day
         """
@@ -61,13 +97,25 @@ class Analysis:
             plt.axhline(y=0.70, color="g",linestyle="-")
         plt.show()
         
-if __name__ == "__main__":
+def main():
     cleaner = Cleaner()
     a = Analysis()
-    df_tickerlabel_list = cleaner.label_tickers(df_list=None, tickers=None, targeted_col_name="Title", load_last=True)    
+    df_tickerlabel_list = cleaner.label_tickers(df=None, tickers=None, targeted_col_name="Title",new_col_name=None, dfname="posts", load_last=True)    
 
-    ticker_dict = a.pack_to_tickers(cleaner.sentiment_analysis(df_tickerlabel_list, load_last=True))
+    #ticker_dict = a.pack_to_tickers(cleaner.sentiment_analysis(df_tickerlabel_list, load_last=True))
+    posts_sentiment_list = cleaner.sentiment_analysis(None, "Concepts", "posts", load_last=True)
+    comments_sentiment_list = cleaner.sentiment_analysis(None, "Concepts", "comments", load_last=True)
+    
+    removed_string = "Your submission was removed from"
+    comments_sentiment_list = comments_sentiment_list[~comments_sentiment_list["body"].str.contains(removed_string)]
+    comments_sentiment_list.to_csv("temp.csv")
+    ticker_dict = a.pack_to_tickers(a.pack_comments_to_posts(df_posts=posts_sentiment_list, df_comments=comments_sentiment_list,name="posts3", save=True))
+
     a.average_daily_sentiment(ticker_dict=ticker_dict, ticker="SPY",top=5, limit=31)
+
+
+if __name__ == "__main__":
+    main()
 
                 
     
