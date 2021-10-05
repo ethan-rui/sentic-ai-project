@@ -4,6 +4,7 @@ from langdetect import detect
 import nest_asyncio
 import pandas as pd
 import numpy as np
+import shelve
 import twint
 import os
 import re
@@ -13,15 +14,16 @@ BASEDIR = os.getcwd()
 
 
 class TwitterSentimentAnalysis:
-    def __init__(self):
+    def __init__(self, cwd: None):
         print(f"Data would be stored in {BASEDIR}")
-        self.cwd = BASEDIR
+        self.cwd = BASEDIR if cwd != None else cwd
 
     def scrape(self, date_from=None, date_to=None, search_query=None):
         if date_from == None:
             print("Date from is not defined, defaulting to current date")
             # Today's date
-            date_from = datetime.today().strftime("%Y-%m-%d")
+            # date_from = datetime.today().strftime("%Y-%m-%d")
+            date_from = (datetime.today() - timedelta(1)).strftime("%Y-%m-%d")
 
         if date_to == None:
             # Tomorrow's date
@@ -34,7 +36,7 @@ class TwitterSentimentAnalysis:
         c = twint.Config()
         # c.Username = "elonmusk"
         # c.Limit = 10
-        c.Limit = 10000
+        c.Limit = 1000
         c.Store_csv = False
         c.Pandas = True
         c.Hide_output = True
@@ -58,8 +60,9 @@ class TwitterSentimentAnalysis:
         except KeyError:
             print("No more data!")
 
-        tweets.to_csv(f"{self.cwd}/data/tweets.csv")
+        tweets.to_csv(f"../datasets/twitter/tweets.csv")
         print(f"Data Preview\n{tweets.head()}")
+        return tweets
 
     def clean(self, path=None):
         # This function would clean each individual tweet
@@ -78,7 +81,7 @@ class TwitterSentimentAnalysis:
             return tweet
 
         if path == None:
-            path = f"{self.cwd}/data/tweets.csv"
+            path = f"../datasets/twitter/tweets.csv"
 
         try:
             tweets = pd.read_csv(path)
@@ -90,12 +93,14 @@ class TwitterSentimentAnalysis:
             print(tweets.head())
             tweets = tweets.dropna()
             tweets = tweets.drop_duplicates()
-            tweets.to_csv(f"{self.cwd}/data/tweets_cleaned.csv")
+            tweets.to_csv(f"../datasets/twitter/tweets_cleaned.csv")
+
+        return tweets
 
     def sentiment_analysis(self, path=None):
         sentiment = pipeline("sentiment-analysis")
         if path == None:
-            path = f"{self.cwd}/data/tweets_cleaned.csv"
+            path = f"../datasets/twitter/tweets_cleaned.csv"
 
         def sentiment_tweet(tweet):
             label, score = sentiment(tweet)[0].values()
@@ -104,15 +109,17 @@ class TwitterSentimentAnalysis:
             else:
                 return score
 
-        tweets = pd.read_csv(f"{self.cwd}/data/tweets_cleaned.csv")
+        tweets = pd.read_csv(f"../datasets/twitter/tweets_cleaned.csv")
         tweets["sentiment"] = tweets["tweet"].apply(sentiment_tweet)
         print(tweets.head())
-        tweets.to_csv(f"{self.cwd}/data/tweets_sentiment.csv")
+        tweets.to_csv(f"../datasets/twitter/tweets_sentiment.csv")
         print("Average Sentiment:", tweets["sentiment"].sum() / len(tweets.index))
 
-    def average_sentiment(self, path=None):
+        return tweets
+
+    def average_sentiment(self, path=None, ticker=None):
         if path == None:
-            path = f"{self.cwd}/data/tweets_sentiment.csv"
+            path = f"../datasets/twitter/tweets_sentiment.csv"
 
         try:
             tweets = pd.read_csv(path)
@@ -120,5 +127,16 @@ class TwitterSentimentAnalysis:
             print(f"Tweets not found in {path}")
             return
         else:
-            print("Average Sentiment:", tweets["sentiment"].sum() / len(tweets.index))
-            return tweets["sentiment"].sum() / len(tweets.index)
+            average_sentiment = tweets["sentiment"].sum() / len(tweets.index)
+            with shelve.open("../logs/sentiment_values.db") as db:
+                db[ticker] = {
+                    "ticker": ticker,
+                    "average_sentiment": average_sentiment,
+                    "time": f"{datetime.now():%Y-%m-%d %H:%M:%S}",
+                }
+            return average_sentiment
+
+
+if __name__ == "__main__":
+    test = TwitterSentimentAnalysis(cwd=BASEDIR)
+    test.scrape(search_query="a")
