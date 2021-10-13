@@ -23,7 +23,7 @@
             </div>
             <div class="col-12 shadow p-3 mb-3 bg-white rounded">
                 <h5>Reddit</h5>
-                55.55%
+                <span id="reddit-sentiment"></span>
             </div>
         </div>
     </div>
@@ -70,11 +70,17 @@
         }
     });
 
-    fetch(`${window.location.origin}/twitter-sentiment?ticker=BTC`)
+    // fetch(`${window.location.origin}/twitter-sentiment?ticker=BTC`)
+    //     .then(response => response.json())
+    //     .then(data => {
+    //         console.log
+    //         $("#twitter-sentiment").html(`${data["sentiment"].toFixed(2)}%`)
+    //     });
+    fetch(`${window.location.origin}/reddit-sentiment?ticker=BTC`)
         .then(response => response.json())
         .then(data => {
             console.log
-            $("#twitter-sentiment").html(`${data["sentiment"].toFixed(2)}%`)
+            $("#reddit-sentiment").html(`${data["sentiment"]}`)
         });
 
 

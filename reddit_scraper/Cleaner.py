@@ -84,14 +84,14 @@ class Cleaner:
         self.returns[thread_num] = new_col
     def label_tickers(self, df: pd.DataFrame, tickers:pd.DataFrame, targeted_col_name:str, new_col_name: str, dfname:str, save:bool=False, load_last:bool=False):
         cache_dir = os.path.join(os.path.abspath(''), "label_history")
-        new_df_list = []
+        
         if load_last:
             try:
                 df = pd.read_csv(os.path.join(cache_dir, f"labelled_tickers_{dfname}.csv"))
                 return df
             except:
                 print("\n".join(["Error has occurred","Proceeding with labeling..."]))
-        patterns = {ticker:re.compile(f"\W{ticker}\W") for ticker in tickers["ticker"].iloc()}
+        patterns = {ticker:re.compile(f"\W{re.escape(ticker)}\W") for ticker in tickers["ticker"].iloc()}
         
         
         filtered_dataset = {

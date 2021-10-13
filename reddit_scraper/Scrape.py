@@ -2,7 +2,7 @@ import os
 import time
 import calendar
 import pandas as pd
-from ast import literal_eval
+from ast import literal_eval, parse
 from json import loads
 from datetime import datetime, timedelta
 from tqdm import tqdm
@@ -20,7 +20,7 @@ class Scraper():
         #         username=reddit_config["username"]
         #     )
         self.scrape_history = []
-    def get_reddit_posts(self, subreddit:str, days:int=31, save:bool=False, load_last:bool=False):
+    def get_reddit_posts(self, subreddit:str, days:int=31, save:bool=False,name="", load_last:bool=False):
         """
         Inputs:
         1) Subreddit -> Name of subreddit (Use ' to delimit multiple)
@@ -29,7 +29,7 @@ class Scraper():
         cache_dir = os.path.join(os.path.abspath(''), "scrape_history")
         if load_last:
             try:
-                df = pd.read_csv(os.path.join(cache_dir, "reddit_posts.csv"))
+                df = pd.read_csv(os.path.join(cache_dir, f"reddit_posts{name}.csv"))
                 return df
             except:
                 print("Error trying to load last cache, proceeding with scrape")
@@ -42,6 +42,7 @@ class Scraper():
             "Title":[],
             "Content": [],
             "Upvotes":[],
+            "Subreddit":[],
         }
         properties = {
             "ID":"id",
@@ -50,17 +51,20 @@ class Scraper():
             "Title":"title",
             "Content": "selftext",
             "Upvotes": "score",
+            "Subreddit": "subreddit"
         }
         counter = 0
         for num in tqdm(range(1, days + 1)):
             last_time = int(time.time() - ((num - 1) * 60 * 60 * 24))
             
             while 1==1:
+                #print("From",last_time,"to",int(time.time() - (num * 60 * 60 * 24)))
                 params = {
                     "before": last_time,
                     "after": int(time.time() - (num * 60 * 60 * 24)),
                     "sort_type": "created_utc",
-                    "sort": "asc",
+                    "sort": "desc",
+                    "size": 500,
                     "subreddit": subreddit
                 }
                 res = s.get(url, params=params)
@@ -73,11 +77,14 @@ class Scraper():
                 for post in data:
                     for ppty in properties:
                         try:
-                            raw_dataset[ppty].append(post[properties[ppty]])
+                            if ppty == "Date":
+                                last_time = post[properties[ppty]]
+                                raw_dataset[ppty].append(datetime.utcfromtimestamp(post[properties[ppty]]).strftime('%Y-%m-%d'))
+                            else:
+                                raw_dataset[ppty].append(post[properties[ppty]])
                         except KeyError:
                             raw_dataset[ppty].append("")
-                    last_time = raw_dataset["Date"][-1]
-                    raw_dataset["Date"][-1] = datetime.utcfromtimestamp(raw_dataset["Date"][-1]).strftime('%Y-%m-%d')
+                    
                 if len(data) == 0:
                     break
         print("Total number of requests made:", counter)
@@ -87,12 +94,12 @@ class Scraper():
                 os.mkdir(cache_dir)
             except:
                 pass
-            scraped.to_csv(os.path.join(cache_dir, f"reddit_posts.csv"))
-            scraped.to_csv(os.path.join(cache_dir, f"reddit_posts_{raw_dataset['Date'][-1]}.csv"))
+            scraped.to_csv(os.path.join(cache_dir, f"reddit_posts{name}.csv"))
+            scraped.to_csv(os.path.join(cache_dir, f"reddit_posts_{raw_dataset['Date'][0]}.csv"))
         self.scrape_history = scraped
         return scraped
         
-    def get_reddit_comments(self, subreddit:str, df:pd.DataFrame, save:bool=False, load_last:bool=False, MAX:int=5):
+    def get_reddit_comments(self, df:pd.DataFrame, save:bool=False, load_last:bool=False, MAX:int=5):
         """
 
         """
@@ -115,7 +122,7 @@ class Scraper():
         for row in tqdm(df.iloc(), total=df.shape[0]):
             params = {
                 "link_id": row["ID"],
-                "subreddit": subreddit,
+                "subreddit": row["Subreddit"],
                 "sort_type": "score",
                 "sort": "desc"
             }
@@ -138,7 +145,7 @@ class Scraper():
             except:
                 pass
             comments.to_csv(os.path.join(cache_dir,f"comments.csv"))
-            comments.to_csv(os.path.join(cache_dir,f"comments_{time.time().strftime('%Y-%m-%d')}.csv"))
+            comments.to_csv(os.path.join(cache_dir,f"comments_{datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d')}.csv"))
             
         return comments
             
@@ -169,6 +176,32 @@ class Scraper():
         if save:
             tickers.to_csv(os.path.join(os.path.abspath(""), "tickers.csv"))
         return tickers
+    def get_crypto_tickers(self,save=False, load_last=False):
+        """
+        Get Crypto Tickers
+        """
+        if load_last:
+            try:
+                tickers = pd.read_csv(os.path.join(os.path.abspath(""), "crypto_tickers.csv"))
+                return tickers
+            except:
+                print("Tickers not found")
+                print("Proceeding with ticker scrape")
+        
+        s = Session()
+        url = "https://api.coinmarketcap.com/data-api/v3/cryptocurrency/listing?start=1&Limit=10000&sortBy=market_cap&sortType=desc&cryptoType=all&tagType=all"
+        cryptos = loads(str(s.get(url).text.strip()))["data"]["cryptoCurrencyList"]
+        tickers = {
+            "ticker":[],
+            "Name":[],
+        }
+        for crypto in tqdm(cryptos):
+            tickers["ticker"].append(crypto["symbol"])
+            tickers["Name"].append(crypto["name"])
+        tickers = pd.DataFrame(tickers)
+        if save:
+            tickers.to_csv(os.path.join(os.path.abspath(""), "crypto_tickers.csv"))
+        return tickers
     def get_financial_data(self, limit:int=31):
         pass
 
@@ -179,4 +212,10 @@ if __name__ == "__main__":
     df2 = s.get_stock_tickers(load_last=True)
     df3 = s.get_reddit_comments("wallstreetbets", df, save=True)
     print(df3)
-    #print(df)
+    print(df)
+
+# s = Scraper()
+# df2 = s.get_crypto_tickers(load_last=True)
+# print("BTC" in df2["ticker"].values)
+# s = Scraper()
+# df = s.get_reddit_posts(subreddit="Crypto_General,CryptoCurrency", days=1, save=True)
