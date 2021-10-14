@@ -1,16 +1,20 @@
 # Imports
 import numpy as np
+import os
 import matplotlib.pyplot as plt
 import pandas as pd
 import datetime as dt
 from pandas.core.algorithms import mode
 import pandas_datareader as web
+import shelve
 
 from sklearn.preprocessing import MinMaxScaler
 from tensorflow.keras.models import Sequential, load_model
 from tensorflow.keras.layers import Dense, Dropout, LSTM
 
 scaler = MinMaxScaler(feature_range=(0, 1))
+with shelve.open("../logs/stock_prices") as db:
+    db.close()
 
 
 class StockForecast:
@@ -19,12 +23,12 @@ class StockForecast:
 
     def get_ticker_prices(self, ticker: str = "BTC-USD", mode="save"):
         if mode.lower() == "load":
-            data = pd.read_csv(f"datasets/{ticker}")
+            data = pd.read_csv(f"../datasets/stock_prices/{ticker}")
         else:
             start = dt.datetime(2012, 1, 1)
             end = dt.datetime.today()
             data = web.DataReader(ticker, "yahoo", start, end)
-            data.to_csv(f"datasets/{ticker}")
+            data.to_csv(f"../datasets/stock_prices/{ticker}")
         self.data = data
 
         # Data Preparation
@@ -45,7 +49,8 @@ class StockForecast:
 
     def build_model(self, x_train, y_train, ticker: str, mode):
         if mode.lower() == "load":
-            return load_model(filepath=f"models/{ticker}")
+            if os.path.exists(f"../models/{ticker}"):
+                return load_model(filepath=f"../models/{ticker}")
 
         model = Sequential()
         model.add(
@@ -60,7 +65,7 @@ class StockForecast:
 
         model.compile(optimizer="adam", loss="mean_squared_error")
         model.fit(x_train, y_train, epochs=25, batch_size=32)
-        model.save(filepath=f"models/{ticker}")
+        model.save(filepath=f"../models/{ticker}")
         return model
 
     def prediction(
@@ -99,7 +104,6 @@ class StockForecast:
         predicted_prices = scaler.inverse_transform(predicted_prices)
 
         prediction_dataset = total_dataset[-prediction_days - 1 :].values
-        print(len(prediction_dataset))
         predicted_values = []
 
         for i in range(1, 31):
@@ -117,14 +121,19 @@ class StockForecast:
             prediction_dataset = np.append(prediction_dataset, float(prediction))
 
         predicted_graph = [float(i) for i in predicted_prices] + predicted_values
-        return actual_prices, predicted_graph
+        days = (
+            [-i for i in range(len(predicted_prices), 0, -1)]
+            + ["today"]
+            + [i for i in range(1, len(predicted_values))]
+        )
+        return actual_prices, predicted_graph, days
 
 
 if __name__ == "__main__":
     test = StockForecast(window=60)
-    ticker_prices = test.get_ticker_prices(ticker="BTC-USD", mode="load")
+    ticker_prices = test.get_ticker_prices(ticker="BTC-USD", mode="save")
     x_train, y_train = test.data_preprocessing(ticker_prices)
-    model = test.build_model(x_train, y_train, ticker="BTC-USD", mode="load")
+    model = test.build_model(x_train, y_train, ticker="BTC-USD", mode="save")
     actual_prices, predicted_prices = test.prediction(
         previous_days=45, model=model, ticker="BTC-USD"
     )
