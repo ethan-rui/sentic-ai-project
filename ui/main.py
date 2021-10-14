@@ -81,8 +81,11 @@ def reddit_sentiment():
     search_query = request.args.get("ticker").upper()
 
     db = None
-    with shelve.open("../logs/reddit_sentiment_values.db") as logs:
-        db = dict(logs)["ticker"]
+    with shelve.open("../logs/reddit_sentiment_values.db", "c") as logs:
+        try:
+            db = dict(logs)["ticker"]
+        except
+            pass
         # print(db)
     try:
 
