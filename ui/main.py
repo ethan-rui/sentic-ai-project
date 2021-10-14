@@ -9,6 +9,8 @@ from datetime import datetime, timedelta
 from flask import Flask, url_for, request
 from flask.templating import render_template
 
+from news import news
+
 sys.path.insert(0, "../twitter_scraper")
 sys.path.insert(0, "../reddit_scraper")
 sys.path.insert(0, "../predictor")
@@ -33,6 +35,8 @@ app = Flask(
     template_folder=f"{BASEDIR}/templates",
     static_folder=f"{BASEDIR}/templates",
 )
+
+app.register_blueprint(news)
 
 app.config["SECRET_KEY"] = "1234"
 
@@ -84,7 +88,7 @@ def reddit_sentiment():
     with shelve.open("../logs/reddit_sentiment_values.db", "c") as logs:
         try:
             db = dict(logs)["ticker"]
-        except
+        except:
             pass
         # print(db)
     try:
