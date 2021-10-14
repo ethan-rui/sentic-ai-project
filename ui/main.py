@@ -11,6 +11,11 @@ from flask.templating import render_template
 
 sys.path.insert(0, "../twitter_scraper")
 sys.path.insert(0, "../reddit_scraper")
+sys.path.insert(0, "../predictor")
+
+# Stock Forecast
+from Stock_Prediction import StockForecast
+
 # Twitter Module(s)
 from TwitterScrape import TwitterSentimentAnalysis
 
@@ -60,33 +65,55 @@ def twitter_sentiment():
         scraper.sentiment_analysis()
         return {"sentiment": scraper.average_sentiment(ticker=search_query) * 100}
 
+
 @app.route("/reddit-sentiment")
 def reddit_sentiment():
     # Returns Daily sentiment value for a day
     # Note for now this should only work with Crypto Tickers
     start_time = time.time()
     search_query = request.args.get("ticker").upper()
-    
+
     db = None
     with shelve.open("../logs/reddit_sentiment_values.db") as logs:
         db = dict(logs)["ticker"]
-        #print(db)
+        # print(db)
     try:
-    
-        days_diff = timedelta(seconds=datetime_difference(
-            str(db[search_query]["Date"].max()), f"{datetime.now():%Y-%m-%d %H:%M:%S}"
-        )).days
-        print("Days Diff",days_diff)
+
+        days_diff = timedelta(
+            seconds=datetime_difference(
+                str(db[search_query]["Date"].max()),
+                f"{datetime.now():%Y-%m-%d %H:%M:%S}",
+            )
+        ).days
+        print("Days Diff", days_diff)
     except Exception as e:
         print(e)
         days_diff = 1
 
     if days_diff < 1:
         analysis = RedditAnalysis()
-        evaluated_sentiment_list = analysis.pack_comments_to_posts(df_posts=None, df_comments=None, name="ui_cache", load_last=True)
-        packed_sentiment_list = analysis.pack_to_tickers(evaluated_sentiment_list,stock_col="Crypto")
-        
-        return {"sentiment": str(round(analysis.average_daily_sentiment(ticker_dict=packed_sentiment_list, ticker=search_query,show_graph=False, limit=1).iloc()[0]["Average Sentiment"] * 100, 2)) + "%"}
+        evaluated_sentiment_list = analysis.pack_comments_to_posts(
+            df_posts=None, df_comments=None, name="ui_cache", load_last=True
+        )
+        packed_sentiment_list = analysis.pack_to_tickers(
+            evaluated_sentiment_list, stock_col="Crypto"
+        )
+
+        return {
+            "sentiment": str(
+                round(
+                    analysis.average_daily_sentiment(
+                        ticker_dict=packed_sentiment_list,
+                        ticker=search_query,
+                        show_graph=False,
+                        limit=1,
+                    ).iloc()[0]["Average Sentiment"]
+                    * 100,
+                    2,
+                )
+            )
+            + "%"
+        }
     else:
         # Initialization
         scraper = RedditScraper()
@@ -95,35 +122,86 @@ def reddit_sentiment():
 
         DAYS = 1
         # subreddits = "wallstreetbets,stocks,pennystocks" # For Stock
-        subreddits  = "Crypto_General,CryptoCurrency" # For Crypto
+        subreddits = "Crypto_General,CryptoCurrency"  # For Crypto
 
         # Scrape
-        posts = scraper.get_reddit_posts(subreddit=subreddits, days=DAYS,name="_UI_cache", save=True)
+        posts = scraper.get_reddit_posts(
+            subreddit=subreddits, days=DAYS, name="_UI_cache", save=True
+        )
         comments = scraper.get_reddit_comments(df=posts, save=True)
         ticker = scraper.get_crypto_tickers(save=True)
         if search_query not in ticker["ticker"].values:
             return {"sentiment": "Ticker not found"}
 
         # Data Cleaning
-        posts = cleaner.concept_parse(posts, "Title", "Concepts", "posts", save=True, THREADS=50)
-        comments = cleaner.concept_parse(comments, "body", "Concepts", "comments", save=True, THREADS=50)
-        posts = cleaner.label_tickers(df=posts, tickers=ticker, targeted_col_name="Title",new_col_name="Crypto",dfname="posts", save=True)
-        comments = comments[comments["post_id"].isin(posts["ID"])] # Filter out comments from posts that are not included (not labelled)
-
+        posts = cleaner.concept_parse(
+            posts, "Title", "Concepts", "posts", save=True, THREADS=50
+        )
+        comments = cleaner.concept_parse(
+            comments, "body", "Concepts", "comments", save=True, THREADS=50
+        )
+        posts = cleaner.label_tickers(
+            df=posts,
+            tickers=ticker,
+            targeted_col_name="Title",
+            new_col_name="Crypto",
+            dfname="posts",
+            save=True,
+        )
+        comments = comments[
+            comments["post_id"].isin(posts["ID"])
+        ]  # Filter out comments from posts that are not included (not labelled)
 
         # Sentiment Analysis
-        posts_sentiment_list = cleaner.sentiment_analysis(posts, "Concepts", "posts", save=True)
-        comments_sentiment_list = cleaner.sentiment_analysis(comments, "Concepts", "comments", save=True)
+        posts_sentiment_list = cleaner.sentiment_analysis(
+            posts, "Concepts", "posts", save=True
+        )
+        comments_sentiment_list = cleaner.sentiment_analysis(
+            comments, "Concepts", "comments", save=True
+        )
 
         # Post Evaluation
-        evaluated_sentiment_list = analysis.pack_comments_to_posts(df_posts=posts_sentiment_list, df_comments=comments_sentiment_list, name="ui_cache", save=True)
+        evaluated_sentiment_list = analysis.pack_comments_to_posts(
+            df_posts=posts_sentiment_list,
+            df_comments=comments_sentiment_list,
+            name="ui_cache",
+            save=True,
+        )
 
-        packed_sentiment_list = analysis.pack_to_tickers(evaluated_sentiment_list,stock_col="Crypto")
+        packed_sentiment_list = analysis.pack_to_tickers(
+            evaluated_sentiment_list, stock_col="Crypto"
+        )
         if search_query not in packed_sentiment_list:
             return {"sentiment": "Ticker not found"}
-        
+
         print("Time Taken: ", time.time() - start_time, "seconds")
-        return {"sentiment": str(round(analysis.average_daily_sentiment(ticker_dict=packed_sentiment_list, ticker=search_query,show_graph=False, limit=1).iloc()[0]["Average Sentiment"] * 100, 2)) + "%"}
+        return {
+            "sentiment": str(
+                round(
+                    analysis.average_daily_sentiment(
+                        ticker_dict=packed_sentiment_list,
+                        ticker=search_query,
+                        show_graph=False,
+                        limit=1,
+                    ).iloc()[0]["Average Sentiment"]
+                    * 100,
+                    2,
+                )
+            )
+            + "%"
+        }
+
+
+@app.route("/stock-prediction")
+def stock_prediction():
+    test = StockForecast(window=60)
+    ticker_prices = test.get_ticker_prices(ticker="BTC-USD", mode="load")
+    x_train, y_train = test.data_preprocessing(ticker_prices)
+    model = test.build_model(x_train, y_train, ticker="BTC-USD", mode="load")
+    actual_prices, predicted_prices = test.prediction(
+        previous_days=45, model=model, ticker="BTC-USD"
+    )
+    print(actual_prices, predicted_prices)
 
 
 def datetime_difference(date_from, date_to):
