@@ -8,14 +8,18 @@ from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup as BS
 from datetime import datetime
 from time import sleep
-import pandas as pd
+from tqdm import tqdm
 
+import os
+import pandas as pd
+import platform
 # UI Stuff
 from flask import Blueprint, render_template, abort, request
 from json import loads
 sys.path.insert(0, "../reddit_scraper")
 
-from Scrape import Scraper as RedditScraper
+#from Scrape import Scraper as RedditScraper
+#from Cleaner import Cleaner
 
 news = Blueprint("news", __name__, template_folder="./templates")
 news_api = loads(open("../config/config.json").read())["StockNews"]["Stock_TOKEN"]
@@ -48,31 +52,43 @@ def get_info(url, s : Session):
     date = datetime.strptime(soup.find("time").text, "%B %d, %Y, %I:%M %p")
     
     return dict(zip(["News", "Title", "Date"],[news, headline, date]))
-def crypto_scrape(ticker: str,  sets:int = 1, wait:float=2):
+def crypto_scrape(sets:int = 1, wait:float=2, save:bool=False, load_last:bool = False, name:str=""):
+    cache_dir = os.path.join(os.path.abspath(""),"crypto_news_history")
+    if load_last:
+        try:
+            return pd.read_csv(os.path.join(cache_dir, "fin_news{}.csv".format(name)))
+        except:
+            print("Reading from cache failed, manually scraping now")
+
     # Get all URLs
     url = "https://finance.yahoo.com/topic/crypto/"
-    driver = webdriver.Chrome(chrome_options=opts)
+    if platform.system() == "Darwin":
+        driver = webdriver.Chrome(options=opts, executable_path="./chromedriver_mac")
+    else:
+        driver = webdriver.Chrome(options=opts)
     soup = driver.get(url)
     links = []
     x = 1
     
     for x in range(sets):
         driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-        print(f"Wait for news to load ({wait} seconds)")
+        print("Wait for news to load ({} seconds)".format(wait))
         sleep(wait)
         soup = BS(driver.execute_script("return document.body.innerHTML;"), 'lxml')
         while True:
             try:
-                links.append(soup.select(f"#Fin-Stream > ul > li:nth-child({x}) a")[0]["href"])
+                links.append(soup.select("#Fin-Stream > ul > li:nth-child({}) a".format(x))[0]["href"])
             except Exception as e:
                 break
             x += 1
     dicts = []
     s = Session()
     print("Found",len(links),"links.")
-    for link in links:
+    for link in tqdm(links):
         dicts.append(get_info("https://finance.yahoo.com" + link, s))
     result = pd.DataFrame(dicts)
+    if save:
+        results.to_csv(os.path.join(cache_dir, "fin_news{}.csv".format(name)))
     return result
 
 
@@ -86,7 +102,7 @@ def new_sentiment():
     ds = scrape(search_query)
 
 if __name__ == "__main__":
-    result = crypto_scrape("BTC",5)
+    result = crypto_scrape(100, 1, save=True)
     print(result)
     print("Scraped",len(result),"of links")
     
