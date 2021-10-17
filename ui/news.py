@@ -14,6 +14,9 @@ import time
 import shelve
 
 
+import os
+import pandas as pd
+import platform
 # UI Stuff
 from flask import Blueprint, render_template, abort, request
 from json import loads
