@@ -27,6 +27,19 @@
             </div>
         </div>
     </div>
+    <br>
+    <table class="table table-dark">
+        <thead>
+          <tr>
+            <th scope="col">#</th>
+            <th scope="col">Title</th>
+            <th scope="col">Sentiment</th>
+          </tr>
+        </thead>
+        <tbody id="news_body">
+
+        </tbody>
+      </table>
 </div>
 
 <script>
@@ -60,13 +73,30 @@
             });
         });
 
-    // fetch(`${window.location.origin}/reddit-sentiment?ticker=BTC`)
-        //.then(response => response.json())
-        //.then(data => {
-          //  console.log
-            //$("#reddit-sentiment").html(`${data["sentiment"]}`)
-        //});
-
+    fetch(`${window.location.origin}/reddit-sentiment?ticker=BTC`)
+        .then(response => response.json())
+        .then(data => {
+           console.log
+            $("#reddit-sentiment").html(`${data["sentiment"]}`)
+        });
+    fetch(`${window.location.origin}/news-sentiment?ticker=BTC`)
+        .then(response => response.json())
+        .then(data => {
+            
+            $("#news_body").html("") // Clearing news body
+            res = data["news"]
+            console.log(res)
+            for(var i = 0; i < res["Title"].length;i++)
+            {
+                $("#news_body").append(`
+                <tr>
+                    <td>${i + 1}</td>
+                    <td>${res["Title"][i]}</td>
+                    <td>${res["Sentiment"][i]}</td>
+                </tr>`)
+            }
+        
+        });    
 
 </script>
 

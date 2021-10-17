@@ -59,7 +59,14 @@ class TwitterSentimentAnalysis:
             tweets = tweets.append(df[["date", "tweet"]])
         except KeyError:
             print("No more data!")
-
+        try:
+            os.mkdir("../datasets")
+        except:
+            pass
+        try:
+            os.mkdir("../datasets/twitter")
+        except:
+            pass
         tweets.to_csv(f"../datasets/twitter/tweets.csv")
         print(f"Data Preview\n{tweets.head()}")
         return tweets

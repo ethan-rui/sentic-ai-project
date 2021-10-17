@@ -12,10 +12,10 @@ import shelve
 class Analysis:
     def __init__(self):
         pass
-    def pack_to_tickers(self, df:pd.DataFrame, stock_col:str="Stock"):
+    def pack_to_tickers(self, df:pd.DataFrame, stock_col:str="Stock", name:str="reddit"):
         ticker_dict = {}
         for row in df.iloc():
-            for ticker in literal_eval(str(row[stock_col])):
+            for ticker in set(literal_eval(str(row[stock_col]))):
                 try:
                     ticker_dict[ticker].append(row)
                 except KeyError:
@@ -24,15 +24,15 @@ class Analysis:
             ticker_dict[ticker] = pd.DataFrame(ticker_dict[ticker])
             ticker_dict[ticker]["Date"] = pd.to_datetime(ticker_dict[ticker]["Date"])
             ticker_dict[ticker].index = ticker_dict[ticker]["Date"]
-        with shelve.open("../logs/reddit_sentiment_values.db", "c") as db:
+        try:
+            os.mkdir("../logs")
+        except:
+            pass
+        with shelve.open(f"../logs/{name}_sentiment_values.db", "c") as db:
             db["ticker"] = ticker_dict
         return ticker_dict
     
     def pack_comments_to_posts(self, df_posts:pd.DataFrame, df_comments:pd.DataFrame, name:str="posts", save:bool=False, load_last:bool=False):
-        if df_posts != None:
-            packed_df = df_posts.copy()
-        evaluation = []
-        comments_score = []
         cache_dir = os.path.join(os.path.abspath(""), "evaluate_history")
         if load_last:
             try:
@@ -40,6 +40,12 @@ class Analysis:
                 return df
             except:
                 print("Error loading previous saved, proceeding with packing and evaluation")
+        try:
+            packed_df = df_posts.copy()
+        except:
+            pass
+        evaluation = []
+        comments_score = []
         for post in tqdm(df_posts.iloc(), total=df_posts.shape[0]):
             related_comments = df_comments[df_comments["post_id"] == post["ID"]]
             related_comments = related_comments["score"]
@@ -64,7 +70,7 @@ class Analysis:
         total /= counter
         return total
 
-    def average_daily_sentiment(self, ticker_dict: dict, ticker: str="SPY", top: int=0,limit: int=31, show_graph=True):
+    def average_daily_sentiment(self, ticker_dict: dict,score_col:str="sentiment_score", ticker: str="SPY", top: int=0,limit: int=31, show_graph=True):
         # Sorting rows in dataframes by day
         """
         1) top10 -> Most talked ticker
@@ -79,7 +85,7 @@ class Analysis:
             for ticker in sorted_ticker_dict:
                 if counter == top:
                     break
-                d = pd.DataFrame([{"Date":group[1]["Date"][0],"Average Sentiment": group[1]["sentiment_score"].sum() / group[1]["score"].count()}\
+                d = pd.DataFrame([{"Date":group[1]["Date"][0],"Average Sentiment": group[1][score_col].sum() / group[1][score_col].count()}\
                     for group in ticker_dict[ticker].groupby(ticker_dict[ticker].index.date)])
                 d = d[d["Date"] > d["Date"].max() - timedelta(days=limit)]
                 if d["Date"].count() > 1:
@@ -95,7 +101,7 @@ class Analysis:
                 ax.axhline(y=0.70, color="g",linestyle="-")
                 ax.legend(loc='best')
         else:    
-            d = pd.DataFrame([{"Date":group[1]["Date"][0],"Average Sentiment": group[1]["sentiment_score"].sum() / group[1]["score"].count()}\
+            d = pd.DataFrame([{"Date":group[1]["Date"][0],"Average Sentiment": group[1][score_col].sum() / group[1][score_col].count()}\
                 for group in ticker_dict[ticker].groupby(ticker_dict[ticker].index.date)])
             d.set_index("Date")
             #print(d)

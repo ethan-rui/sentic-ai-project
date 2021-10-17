@@ -20,21 +20,21 @@ class Cleaner:
         self.sentic_config = config["SenticNet"]
         self.sentiment = None
     def concept_parse(self, df:pd.DataFrame,  targeted_col_name:str, new_col_name : str, dfname:str, load_last: bool=False\
-        , save: bool=False, THREADS: int=10):
+        , save: bool=False, THREADS: int=10, debug:bool=False):
         """
         Desc:
         Input:
-        1) List of dataframes(From Reddit_Scrape)
-        2) Targeted column to extract concepts
+        1) Dataframe
+        2) Targeted column name to extract concepts
         3) New column name for storing concepts
         4) Name of dataframe (for storing purposes)
         Output:
-        2) List of dataframes with an additional column
+        1) Dataframe with an additional column for parsed concepts
         """
         cache_dir = os.path.join(os.path.abspath(''), "clean_history")
         if load_last:
             try:
-                returned_df = pd.read_csv(os.path.join(cache_dir, f"cleaned_reddit_{dfname}.csv"))
+                returned_df = pd.read_csv(os.path.join(cache_dir, f"cleaned_{dfname}.csv"))
                 return returned_df
             except:
                 print("\n".join(["Error has occurred","Proceeding with normal parsing..."]))
@@ -47,7 +47,7 @@ class Cleaner:
         self.returns = [None] * THREADS
         ts = [None] * THREADS
         for thread_num in range(THREADS):
-            ts[thread_num] = Thread(target=self.SenticNet, args=(splitted_ds[thread_num], CP_API, targeted_col_name, thread_num))
+            ts[thread_num] = Thread(target=self.SenticNet, args=(splitted_ds[thread_num], CP_API, targeted_col_name, thread_num, debug))
             ts[thread_num].start()
         for x in tqdm(range(THREADS)):
             ts[x].join()
@@ -57,10 +57,10 @@ class Cleaner:
                 os.mkdir(cache_dir)
             except:
                 pass
-            new_df.to_csv(os.path.join(cache_dir, f"cleaned_reddit_{dfname}.csv"))
+            new_df.to_csv(os.path.join(cache_dir, f"cleaned_{dfname}.csv"))
         return new_df
             
-    def SenticNet(self, dataset : pd.DataFrame, API_KEY : str, targeted_col_name:str="Concepts" , thread_num:int=10, \
+    def SenticNet(self, dataset : pd.DataFrame, API_KEY : str, targeted_col_name:str="Concepts" , thread_num:int=10, debug:bool=False, \
         LANGUAGE:str ="en")->pd.DataFrame:
         """
         Require: 
@@ -70,7 +70,7 @@ class Cleaner:
         4) Column Name for data obtained from SenticNet API
         5) Thread Number (For storing returns)
         Returns:
-        Set Column to returns variable at the given thread number (In order)
+        1) Set Column to returns variable at the given thread number (In order)
         """
         s = Session()
         url = f"https://sentic.net/api/{LANGUAGE}/{API_KEY}.py"
@@ -80,6 +80,11 @@ class Cleaner:
                 "text" : row[targeted_col_name].replace(" ", "%20")
             }
             res = s.get(url, params=params)
+            if debug:
+                print("\v")
+                print(row)
+                print(res.text)
+                print("\v")
             new_col.append(res.text)
         self.returns[thread_num] = new_col
     def label_tickers(self, df: pd.DataFrame, tickers:pd.DataFrame, targeted_col_name:str, new_col_name: str, dfname:str, save:bool=False, load_last:bool=False):
@@ -93,7 +98,7 @@ class Cleaner:
                 print("\n".join(["Error has occurred","Proceeding with labeling..."]))
         patterns = {ticker:re.compile(f"\W{re.escape(ticker)}\W") for ticker in tickers["ticker"].iloc()}
         
-        
+        #print(patterns)
         filtered_dataset = {
             "Comment/Post": [],
             "Corresponding ticker": []

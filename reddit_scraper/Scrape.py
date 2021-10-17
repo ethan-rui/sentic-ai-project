@@ -149,7 +149,11 @@ class Scraper():
             
         return comments
             
-
+    def get_tickers(self, save=False, load_last=False):
+        crypto_tickers = self.get_crypto_tickers(save=save,load_last=load_last)
+        stock_tickers = self.get_stock_tickers(save=save,load_last=load_last)
+        tickers = pd.concat([crypto_tickers,stock_tickers])
+        return tickers
 
     def get_stock_tickers(self, save=False, load_last=False):
         """
@@ -157,7 +161,7 @@ class Scraper():
         """
         if load_last:
             try:
-                tickers = pd.read_csv(os.path.join(os.path.abspath(""), "tickers.csv"))
+                tickers = pd.read_csv(os.path.join(os.path.abspath(""), "stock_tickers.csv"))
                 return tickers
             except:
                 print("Tickers not found")
@@ -174,8 +178,9 @@ class Scraper():
             tickers["Name"].append(stock["n"])
         tickers = pd.DataFrame(tickers)
         if save:
-            tickers.to_csv(os.path.join(os.path.abspath(""), "tickers.csv"))
+            tickers.to_csv(os.path.join(os.path.abspath(""), "stock_tickers.csv"))
         return tickers
+        
     def get_crypto_tickers(self,save=False, load_last=False):
         """
         Get Crypto Tickers
