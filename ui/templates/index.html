@@ -10,7 +10,7 @@
             <div class="col-12">
                 <h5 class="mb-3">Current Stock:
                     <select class="form-select form-select-sm" autocomplete="off" onchange="
-                        twitter_sentiment(this.value)" aria-label=".form-select-sm example">
+                        update_data(this.value)" aria-label=".form-select-sm example">
                         <option value="BTC-USD" selected>Bitcoin</option>
                         <option value="ETH-USD">Ethereum</option>
                         <option value="DOGE-USD">Doge</option>
@@ -51,8 +51,15 @@
 
 <script>
     $(document).ready(() => {
-        twitter_sentiment("BTC-USD")
+        twitter_sentiment("BTC-USD");
+        stock_prediction("BTC-USD");
     })
+
+    // Put all your functions here so on select will update
+    function update_data(ticker) {
+        twitter_sentiment(ticker);
+        stock_prediction(ticker);
+    }
 
     function twitter_sentiment(ticker) {
         console.log(ticker)
@@ -65,28 +72,30 @@
             });
     }
 
-    fetch(`${window.location.origin}/stock-prediction`)
-        .then(response => response.json())
-        .then(data => {
-            new Chart(document.getElementById("myChart"), {
-                type: 'line',
-                data: {
-                    labels: data["labels"],
-                    datasets: [{
-                        data: data["predicted_prices"],
-                        label: "Predicted Prices",
-                        borderColor: "red",
-                        fill: false
-                    }, {
-                        data: data["actual_prices"],
-                        label: "Actual Prices",
-                        borderColor: "blue",
-                        fill: false
-                    }
-                    ]
-                },
+    function stock_prediction(ticker) {
+        fetch(`${window.location.origin}/stock-prediction?ticker=${ticker}`)
+            .then(response => response.json())
+            .then(data => {
+                new Chart(document.getElementById("myChart"), {
+                    type: 'line',
+                    data: {
+                        labels: data["labels"],
+                        datasets: [{
+                            data: data["predicted_prices"],
+                            label: "Predicted Prices",
+                            borderColor: "red",
+                            fill: false
+                        }, {
+                            data: data["actual_prices"],
+                            label: "Actual Prices",
+                            borderColor: "blue",
+                            fill: false
+                        }
+                        ]
+                    },
+                });
             });
-        });
+    }
 
 //    fetch(`${window.location.origin}/reddit-sentiment?ticker=BTC`)
 //        .then(response => response.json())
