@@ -91,8 +91,8 @@
                 $("#news_body").append(`
                 <tr>
                     <td>${i + 1}</td>
-                    <td>${res["Title"][i]}</td>
-                    <td>${res["Sentiment"][i]}</td>
+                    <td><a href='${res["Link"][i]}'>${res["Title"][i]}</a></td>
+                    <td>${(res["Sentiment"][i] != 0) ? res["Sentiment"][i] : 'Not available'}</td>
                 </tr>`)
             }
         
