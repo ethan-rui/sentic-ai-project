@@ -55,7 +55,6 @@ def page_home():
 @app.route("/twitter-sentiment")
 def twitter_sentiment():
     search_query = request.args.get("ticker").upper()
-    db = None
     logs = shelve.open("../logs/sentiment_values.db")
     db = dict(logs)
     logs.close()
@@ -64,6 +63,7 @@ def twitter_sentiment():
         seconds_diff = datetime_difference(
             db[search_query]["time"], f"{datetime.now():%Y-%m-%d %H:%M:%S}"
         )
+        print("\n", seconds_diff, "\n")
     except KeyError:
         seconds_diff = 36001
 

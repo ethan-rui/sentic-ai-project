@@ -19,6 +19,12 @@ class TwitterSentimentAnalysis:
         self.cwd = BASEDIR if cwd != None else cwd
 
     def scrape(self, date_from=None, date_to=None, search_query=None):
+        search_query = search_query.split("-")[0]
+        tickers = pd.read_csv("crypto_tickers.csv")
+        search_query += (
+            " OR " + list(tickers[tickers["ticker"] == search_query]["Name"])[0]
+        )
+
         if date_from == None:
             print("Date from is not defined, defaulting to current date")
             # Today's date
@@ -146,4 +152,4 @@ class TwitterSentimentAnalysis:
 
 if __name__ == "__main__":
     test = TwitterSentimentAnalysis(cwd=BASEDIR)
-    test.scrape(search_query="a")
+    test.scrape(search_query="ETH-USD")
