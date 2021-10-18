@@ -79,7 +79,14 @@ class Cleaner:
             params = {
                 "text" : row[targeted_col_name].replace(" ", "%20")
             }
-            res = s.get(url, params=params)
+            try:
+                res = s.get(url, params=params)
+            except:
+                splitted_row = row[targeted_col_name].split(" ")
+                params = {
+                    "text" : "%20".join([str(word) for word in splitted_row][:int(len(splitted_row) / 2)]) # Limit params
+                }
+                res = s.get(url, params=params)
             if debug:
                 print("\v")
                 print(row)

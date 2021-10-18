@@ -88,31 +88,30 @@
             });
         });
 
- //   fetch(`${window.location.origin}/reddit-sentiment?ticker=BTC`)
- //       .then(response => response.json())
- //       .then(data => {
- //           console.log
- //           $("#reddit-sentiment").html(`${data["sentiment"]}`)
- //       });
+//    fetch(`${window.location.origin}/reddit-sentiment?ticker=BTC`)
+//        .then(response => response.json())
+//        .then(data => {
+//            console.log
+//            $("#reddit-sentiment").html(`${data["sentiment"]}`)
+//        });
 
-
- //   fetch(`${window.location.origin}/news-sentiment?ticker=BTC`)
- //       .then(response => response.json())
- //       .then(data => {
+//    fetch(`${window.location.origin}/news-sentiment?ticker=BTC`)
+//        .then(response => response.json())
+//        .then(data => {
 //
- //           $("#news_body").html("") // Clearing news body
- //           res = data["news"]
- //           console.log(res)
- //           for (var i = 0; i < res["Title"].length; i++) {
- //               $("#news_body").append(`
- //               <tr>
- //                   <td>${i + 1}</td>
- //                   <td>${res["Title"][i]}</td>
- //                   <td>${res["Sentiment"][i]}</td>
- //               </tr>`)
- //           }
+//            $("#news_body").html("") // Clearing news body
+//            res = data["news"]
+//            console.log(res)
+//            for (var i = 0; i < res["Title"].length; i++) {
+//                $("#news_body").append(`
+//                <tr>
+//                    <td>${i + 1}</td>
+//                    <td><a href='${res["Link"][i]}'>${res["Title"][i]}</a></td>
+//                    <td>${(res["Sentiment"][i] != 0) ? res["Sentiment"][i] : 'Not available'}</td>
+//                </tr>`)
+//            }
 //
- //       });
+//        });
 
 </script>
 

@@ -147,7 +147,11 @@ def new_sentiment():
         return {"news": "Not found"}
     if logs == None:
         logs = news_analysis(SETS=30, THREADS=10)
-        ticker_data = logs[search_query].sort_values(by=["score"], ascending=False)
+        ticker_data = (
+            logs[search_query]
+            .sort_values(by=["score"], ascending=False)
+            .drop_duplicates(subset=["Title"])
+        )
         data = dict(
             zip(
                 ["Title", "Sentiment"],
@@ -166,7 +170,11 @@ def new_sentiment():
         ).days
         if days_diff >= 2:
             logs = news_analysis(SETS=30, THREADS=10)
-            ticker_data = logs[search_query].sort_values(by=["score"], ascending=False)
+            ticker_data = (
+                logs[search_query]
+                .sort_values(by=["score"], ascending=False)
+                .drop_duplicates(subset=["Title"])
+            )
             data = dict(
                 zip(
                     ["Title", "Sentiment"],
@@ -174,11 +182,19 @@ def new_sentiment():
                 )
             )
             return {"news": data}
-        ticker_data = logs[search_query].sort_values(by=["score"], ascending=False)
+        ticker_data = (
+            logs[search_query]
+            .sort_values(by=["score"], ascending=False)
+            .drop_duplicates(subset=["Title"])
+        )
         data = dict(
             zip(
-                ["Title", "Sentiment"],
-                [list(ticker_data["Title"]), list(ticker_data["score"])],
+                ["Title", "Sentiment", "Link"],
+                [
+                    list(ticker_data["Title"]),
+                    list(ticker_data["score"]),
+                    list(ticker_data["link"]),
+                ],
             )
         )
         return {"news": data}
@@ -203,10 +219,27 @@ def news_analysis(SETS: int = 5, THREADS: int = 1):
         name="crypto&stock", sets=SETS, crypto=True, stock=True, save=True
     )  # 5 sets scrapes abt "18 hours worth" of news
 
-    # data = cleaner.label_tickers(df=data, tickers=tickers, targeted_col_name="News", new_col_name="Ticker", dfname=NAME, save=True)
-    # data = cleaner.concept_parse(df=data, targeted_col_name="Title", new_col_name=CONCEPT_NAME, dfname=NAME, save=True, THREADS=THREADS, debug=True)
-    # data = cleaner.sentiment_analysis(df=data, targeted_col_name=CONCEPT_NAME, dfname=NAME, save=True)
-    print(data)
+    data = cleaner.label_tickers(
+        df=data,
+        tickers=tickers,
+        targeted_col_name="News",
+        new_col_name="Ticker",
+        dfname=NAME,
+        save=True,
+    )
+    data = cleaner.concept_parse(
+        df=data,
+        targeted_col_name="Title",
+        new_col_name=CONCEPT_NAME,
+        dfname=NAME,
+        save=True,
+        THREADS=THREADS,
+        debug=True,
+    )
+    data = cleaner.sentiment_analysis(
+        df=data, targeted_col_name=CONCEPT_NAME, dfname=NAME, save=True
+    )
+    # print(data)
 
     return analysis.pack_to_tickers(df=data, stock_col="Ticker", name="news")
 
