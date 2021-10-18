@@ -67,25 +67,36 @@ def twitter_sentiment():
         seconds_diff = 36001
 
     if seconds_diff < 36000:
-        return {"sentiment": db[search_query]["average_sentiment"] * 100}
+        return {
+            "sentiment": db[search_query]["average_sentiment"] * 100,
+            "date": db[search_query]["time"],
+        }
     else:
         scraper = TwitterSentimentAnalysis(cwd=BASEDIR)
         scraper.scrape(search_query=search_query)
         scraper.clean()
         scraper.sentiment_analysis()
-        return {"sentiment": scraper.average_sentiment(ticker=search_query) * 100}
-
+        print()
+        return {
+            "sentiment": scraper.average_sentiment(ticker=search_query) * 100,
+            "date": db[search_query]["time"],
+        }
 
 
 @app.route("/stock-prediction")
 def stock_prediction():
+    search_query = request.args.get("ticker").upper()
     try:
         with shelve.open("../logs/stock_prices") as db:
             data = dict(db)
 
         date_now = f"{datetime.now():%Y-%m-%d %H:%M:%S}"
-        if not datetime_difference(data["BTC-USD"]["date_created"], date_now) > 100000:
-            ticker_data = data["BTC-USD"]
+        if (
+            not datetime_difference(data[search_query]["date_created"], date_now)
+            > 100000
+        ):
+            ticker_data = data[search_query]
+            print(ticker_data)
             return {
                 "actual_prices": ticker_data["actual_prices"],
                 "predicted_prices": ticker_data["predicted_prices"],
@@ -95,20 +106,21 @@ def stock_prediction():
         print("Repredicting stocks")
 
     test = StockForecast(window=60)
-    ticker_prices = test.get_ticker_prices(ticker="BTC-USD", mode="load")
+    ticker_prices = test.get_ticker_prices(ticker=search_query, mode="load")
     x_train, y_train = test.data_preprocessing(ticker_prices)
-    model = test.build_model(x_train, y_train, ticker="BTC-USD", mode="load")
-    actual_prices, predicted_prices, days = test.prediction(
-        previous_days=45, model=model, ticker="BTC-USD"
+    model = test.build_model(x_train, y_train, ticker=search_query, mode="load")
+    actual_prices, predicted_prices, days = test.predict_prices(
+        days=45, model=model, ticker=search_query, data=ticker_prices
     )
     print(days)
     with shelve.open("../logs/stock_prices", flag="c") as db:
-        db["BTC-USD"] = {
+        db[search_query] = {
             "actual_prices": list(actual_prices),
             "predicted_prices": list(predicted_prices),
             "days": days,
             "date_created": f"{datetime.now():%Y-%m-%d %H:%M:%S}",
         }
+
     return {
         "actual_prices": list(actual_prices),
         "predicted_prices": list(predicted_prices),

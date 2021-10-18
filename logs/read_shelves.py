@@ -1,4 +1,4 @@
 import shelve
 
-with shelve.open("sentiment_values.db", "c") as db:
+with shelve.open("stock_prices", "c") as db:
     print(dict(db))

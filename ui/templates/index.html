@@ -9,15 +9,17 @@
         <div class="col-9">
             <div class="col-12">
                 <h5 class="mb-3">Current Stock:
-                    <select class="form-select form-select-sm" autocomplete="off" onchange="
-                        update_data(this.value)" aria-label=".form-select-sm example">
-                        <option value="BTC-USD" selected>Bitcoin</option>
-                        <option value="ETH-USD">Ethereum</option>
-                        <option value="DOGE-USD">Doge</option>
-                    </select>
+                    <small> <select class="form-control form-control-md mt-2" autocomplete="off"
+                            onchange="update_data(this.value)" aria-label=".form-select-sm example">
+                            <option value="BTC-USD" selected>Bitcoin</option>
+                            <option value="ETH-USD">Ethereum</option>
+                            <option value="DOGE-USD">Doge</option>
+                        </select></small>
                 </h5>
                 <div class="col-12 shadow p-3 mb-3 bg-white rounded">
-                    <canvas id="myChart"></canvas>
+                    <div id="stockChart">
+                        <canvas id="myChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
@@ -26,7 +28,7 @@
             <h5 class="mb-3">Stock Sentiment</h5>
             <div class="col-12 shadow p-3 mb-3 bg-white rounded">
                 <h5>Twitter <small class="ticker"></small></h5>
-                <span id="twitter-sentiment"></span>
+                <span id="twitter-sentiment"></span> <small class="float-right" id="twitter-date"></small>
             </div>
             <div class="col-12 shadow p-3 mb-3 bg-white rounded">
                 <h5>Reddit</h5>
@@ -69,6 +71,7 @@
                 console.log
                 $("#twitter-sentiment").html(`${data["sentiment"].toFixed(2)}%`)
                 $(".ticker").html(ticker)
+                $("#twitter-date").html(data["date"])
             });
     }
 
@@ -76,6 +79,7 @@
         fetch(`${window.location.origin}/stock-prediction?ticker=${ticker}`)
             .then(response => response.json())
             .then(data => {
+                document.querySelector("#stockChart").innerHTML = '<canvas id="myChart"></canvas>';
                 new Chart(document.getElementById("myChart"), {
                     type: 'line',
                     data: {

@@ -1,41 +1,49 @@
-# Imports
 import numpy as np
-import os
 import matplotlib.pyplot as plt
 import pandas as pd
 import datetime as dt
 from pandas.core.algorithms import mode
 import pandas_datareader as web
-import shelve
-
+from pandas_datareader.data import DataReader
 from sklearn.preprocessing import MinMaxScaler
 from tensorflow.keras.models import Sequential, load_model
 from tensorflow.keras.layers import Dense, Dropout, LSTM
+import os
+import shelve
 
-scaler = MinMaxScaler(feature_range=(0, 1))
-with shelve.open("../logs/stock_prices") as db:
-    db.close()
+db = shelve.open("../logs/stock_prices")
+db.close()
 
 
 class StockForecast:
     def __init__(self, window: int = 60):
-        self.window = window
+        self.window = 60
+        self.scaler = MinMaxScaler(feature_range=(0, 1))
 
-    def get_ticker_prices(self, ticker: str = "BTC-USD", mode="save"):
-        if mode.lower() == "load":
-            data = pd.read_csv(f"../datasets/stock_prices/{ticker}")
-        else:
-            start = dt.datetime(2012, 1, 1)
-            end = dt.datetime.today()
-            data = web.DataReader(ticker, "yahoo", start, end)
-            data.to_csv(f"../datasets/stock_prices/{ticker}")
-        self.data = data
+    def get_ticker_prices(self, ticker, mode):
+        path = f"../datasets/stock_prices/{ticker}.csv"
 
-        # Data Preparation
-        return scaler.fit_transform(data["Close"].values.reshape(-1, 1))
+        if mode == "load":
+            print("Loading ticker prices for stock prediction...")
+            if os.path.exists(path=path):
+                return pd.read_csv(path)
 
-    def data_preprocessing(self, scaled_data) -> tuple:
+        print("Rescraping for stock prices")
+
+        start = dt.datetime(2012, 1, 1)
+        end = dt.datetime.today()
+
+        data = web.DataReader(ticker, "yahoo", start, end)
+        print(data.head())
+        data.to_csv(path)
+        return data
+
+    def data_preprocessing(self, data):
+        scaler = self.scaler
+        scaled_data = scaler.fit_transform(data["Close"].values.reshape(-1, 1))
+
         prediction_days = self.window
+
         x_train = []
         y_train = []
 
@@ -45,12 +53,15 @@ class StockForecast:
 
         x_train, y_train = np.array(x_train), np.array(y_train)
         x_train = np.reshape(x_train, (x_train.shape[0], x_train.shape[1], 1))
-        return x_train, x_train
+        return x_train, y_train
 
-    def build_model(self, x_train, y_train, ticker: str, mode):
-        if mode.lower() == "load":
-            if os.path.exists(f"../models/{ticker}"):
-                return load_model(filepath=f"../models/{ticker}")
+    def build_model(self, x_train, y_train, ticker, mode):
+        path = f"../models/{ticker}"
+        if mode == "load":
+            if os.path.exists(path=f"../models/{ticker}"):
+                return load_model(path)
+
+        print("Building model")
 
         model = Sequential()
         model.add(
@@ -65,21 +76,15 @@ class StockForecast:
 
         model.compile(optimizer="adam", loss="mean_squared_error")
         model.fit(x_train, y_train, epochs=25, batch_size=32)
-        model.save(filepath=f"../models/{ticker}")
+        model.save(filepath=path)
         return model
 
-    def prediction(
-        self,
-        previous_days,
-        model,
-        ticker: str = "BTC-USD",
-    ):
-        # Testing the accuracy using previous data
-        data = self.data
+    def predict_prices(self, days, model, ticker, data):
         prediction_days = self.window
+        scaler = self.scaler
 
         test_end = dt.datetime.today()
-        test_start = test_end - dt.timedelta(previous_days)
+        test_start = test_end - dt.timedelta(45)
 
         test_data = web.DataReader(ticker, "yahoo", test_start, test_end)
         actual_prices = test_data["Close"].values
@@ -103,10 +108,11 @@ class StockForecast:
         predicted_prices = model.predict(x_test)
         predicted_prices = scaler.inverse_transform(predicted_prices)
 
+        # Predicting future stock prices
         prediction_dataset = total_dataset[-prediction_days - 1 :].values
         predicted_values = []
 
-        for i in range(1, 31):
+        for i in range(1, 15):
             model_inputs = prediction_dataset.reshape(-1, 1)
             model_inputs = scaler.transform(model_inputs)
 
@@ -121,20 +127,20 @@ class StockForecast:
             prediction_dataset = np.append(prediction_dataset, float(prediction))
 
         predicted_graph = [float(i) for i in predicted_prices] + predicted_values
-        days = (
-            [-i for i in range(len(predicted_prices), 0, -1)]
-            + ["today"]
-            + [i for i in range(1, len(predicted_values))]
-        )
+
+        print(len(predicted_graph))
+        days = [x for x in range(days, 0, -1)] + ["today"] + [i for i in range(1, 16)]
+
         return actual_prices, predicted_graph, days
 
 
 if __name__ == "__main__":
+    ticker = "ETH-USD"
+
     test = StockForecast(window=60)
-    ticker_prices = test.get_ticker_prices(ticker="BTC-USD", mode="save")
+    ticker_prices = test.get_ticker_prices(ticker=ticker, mode="load")
     x_train, y_train = test.data_preprocessing(ticker_prices)
-    model = test.build_model(x_train, y_train, ticker="BTC-USD", mode="save")
-    actual_prices, predicted_prices = test.prediction(
-        previous_days=45, model=model, ticker="BTC-USD"
+    model = test.build_model(x_train, y_train, ticker=ticker, mode="load")
+    actual_prices, predicted_prices, days = test.predict_prices(
+        days=45, model=model, ticker=ticker, data=ticker_prices
     )
-    print(actual_prices, predicted_prices)
