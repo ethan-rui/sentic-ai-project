@@ -69,6 +69,7 @@ def reddit_sentiment():
             + "%",
             "Polarity": scores["Average Polarity"],
             "Subjectivity": scores["Average Subjectivity"],
+            "Date": scores["Date"]
         }
     else:
         # Initialization
@@ -172,4 +173,5 @@ def reddit_sentiment():
             + "%",
             "Polarity": scores["Average Polarity"],
             "Subjectivity": scores["Average Subjectivity"],
+            "Date": datetime.strptime(str(scores["Date"]), "%Y-%m-%d %H:%M:%S").strftime("%Y-%m-%d %H:%M:%S")
         }

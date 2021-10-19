@@ -7,7 +7,9 @@
         "username":"fakebot3"
     },
     "SenticNet": {
-        "Concept_Parsing": "W232JFASFBegegjoeg92"
+        "Concept_Parsing": "W232JFASFBegegjoeg92",
+        "Subjectivity_Detection": "RW2Begegjoeg92",
+        "Polarity_Classification": "rA32JFASFeg92wy"
     },
     "StockNews":{
         "Stock_TOKEN":"1a79a4d60de6718e8e5b326e338ae533"

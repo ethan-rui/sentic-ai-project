@@ -31,8 +31,9 @@
                 <span id="twitter-sentiment"></span> <small class="float-right" id="twitter-date"></small>
             </div>
             <div class="col-12 shadow p-3 mb-3 bg-white rounded">
-                <h5>Reddit</h5>
-                <span id="reddit-sentiment"></span>
+                <h5>Reddit <small id="Reddit-Ticker"></small></h5>
+                <span id="reddit-sentiment"></span> <small class="float-right" id="reddit-date"></small>
+
             </div>
         </div>
     </div>
@@ -55,8 +56,8 @@
 
     // Put all your functions here so on select will update
     function update_data(ticker) {
-//        twitter_sentiment(ticker);
-//        stock_prediction(ticker);
+        twitter_sentiment(ticker);
+        stock_prediction(ticker);
         news_sentiment(ticker);
         reddit_sentiment(ticker);
     }
@@ -148,6 +149,8 @@
                     polarity = "NEUTRAL"
                 }
                 $("#reddit-sentiment").html(`${data["sentiment"]}, ${polarity}, ${subjectivity}`)
+                $("#Reddit-Ticker").html(`${ticker}`)
+                $("#reddit-date").html(`${data["Date"]}`)
             });
     }
     $(document).ready(() => {
