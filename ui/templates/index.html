@@ -52,15 +52,13 @@
 </div>
 
 <script>
-    $(document).ready(() => {
-        twitter_sentiment("BTC-USD");
-        stock_prediction("BTC-USD");
-    })
 
     // Put all your functions here so on select will update
     function update_data(ticker) {
-        twitter_sentiment(ticker);
-        stock_prediction(ticker);
+//        twitter_sentiment(ticker);
+//        stock_prediction(ticker);
+        news_sentiment(ticker);
+        reddit_sentiment(ticker);
     }
 
     function twitter_sentiment(ticker) {
@@ -100,32 +98,61 @@
                 });
             });
     }
+    function news_sentiment(ticker){
+        fetch(`${window.location.origin}/news-sentiment?ticker=${ticker.split("-")[0]}`)
+            .then(response => response.json())
+            .then(data => {
 
-//    fetch(`${window.location.origin}/reddit-sentiment?ticker=BTC`)
-//        .then(response => response.json())
-//        .then(data => {
-//            console.log
-//            $("#reddit-sentiment").html(`${data["sentiment"]}`)
-//        });
+                $("#news_body").html("") // Clearing news body
+                res = data["news"]
+                console.log(res)
+                for (var i = 0; i < res["Title"].length; i++) {
+                    $("#news_body").append(`
+                    <tr>
+                        <td>${i + 1}</td>
+                        <td><a href='${res["Link"][i]}'>${res["Title"][i]}</a></td>
+                        <td>${(res["Sentiment"][i] != 0) ? res["Sentiment"][i] * 100 + "%" : 'Not available'}</td>
+                    </tr>`)
+                }
 
-//    fetch(`${window.location.origin}/news-sentiment?ticker=BTC`)
-//        .then(response => response.json())
-//        .then(data => {
-//
-//            $("#news_body").html("") // Clearing news body
-//            res = data["news"]
-//            console.log(res)
-//            for (var i = 0; i < res["Title"].length; i++) {
-//                $("#news_body").append(`
-//                <tr>
-//                    <td>${i + 1}</td>
-//                    <td><a href='${res["Link"][i]}'>${res["Title"][i]}</a></td>
-//                    <td>${(res["Sentiment"][i] != 0) ? res["Sentiment"][i] : 'Not available'}</td>
-//                </tr>`)
-//            }
-//
-//        });
-
+            });
+    }
+    function reddit_sentiment(ticker)
+    {
+        fetch(`${window.location.origin}/reddit-sentiment?ticker=${ticker.split("-")[0]}`)
+            .then(response => response.json())
+            .then(data => {
+                console.log(data)
+                if(data["Subjectivity"] > 0)
+                {
+                    subjectivity = "SUBJECTIVE"
+                }
+                else if(data["Subjectivity"] < 0)
+                {
+                    subjectivity = "NON-SUBJECTIVE"
+                }
+                else
+                {
+                    subjectivity = "NEUTRAL"
+                }
+                if(data["Polarity"] > 0)
+                {
+                    polarity = "POSITIVE"
+                }
+                else if(data["Polarity"] > 0)
+                {
+                    polarity = "NEGATIVE"
+                }
+                else
+                {
+                    polarity = "NEUTRAL"
+                }
+                $("#reddit-sentiment").html(`${data["sentiment"]}, ${polarity}, ${subjectivity}`)
+            });
+    }
+    $(document).ready(() => {
+        update_data("BTC-USD")
+    })
 </script>
 
 

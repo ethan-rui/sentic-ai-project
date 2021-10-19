@@ -204,7 +204,7 @@ def news_analysis(SETS: int = 5, THREADS: int = 1):
     """
     Analysing all News
     # TODO 
-    data = cleaner.sentiment_analysis(df=data, targeted_col_name=CONCEPT_NAME, dfname=NAME, save=True) \\
+    data = cleaner.transformers_sentiment_analysis(df=data, targeted_col_name=CONCEPT_NAME, dfname=NAME, save=True) \\
     must be made into a lambda function, so other analysis function can be easily integrated
     """
     NAME = "News"
@@ -227,7 +227,8 @@ def news_analysis(SETS: int = 5, THREADS: int = 1):
         dfname=NAME,
         save=True,
     )
-    data = cleaner.concept_parse(
+    data = cleaner.SenticNet(
+        api_type="Concept_Parsing",
         df=data,
         targeted_col_name="Title",
         new_col_name=CONCEPT_NAME,
@@ -236,7 +237,7 @@ def news_analysis(SETS: int = 5, THREADS: int = 1):
         THREADS=THREADS,
         debug=True,
     )
-    data = cleaner.sentiment_analysis(
+    data = cleaner.transformers_sentiment_analysis(
         df=data, targeted_col_name=CONCEPT_NAME, dfname=NAME, save=True
     )
     # print(data)
